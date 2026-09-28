@@ -1,53 +1,69 @@
+#include <chrono>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <libevdev-1.0/libevdev/libevdev.h>
+#include <libevdev/libevdev.h>
+#include <libevdev/libevdev-uinput.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <linux/input-event-codes.h>
-using namespace std;
+#include <ostream>
+#include <thread>
 
-int virtualMouse(){
+struct libevdev_uinput *create_virtual_mouse(void){
     struct libevdev *dev = libevdev_new();
+    if (!dev) {
+        std::cerr << "failed to make virtual mouse on function libevdev_new()" << std::endl;       
+        exit(1);
+    }
+
     libevdev_set_name(dev, "virtualMouse");
     libevdev_enable_event_type(dev, EV_KEY);
     libevdev_enable_event_code(dev, EV_KEY, BTN_LEFT, NULL);
-    return dev;
+    libevdev_enable_event_code(dev, EV_KEY, BTN_LEFT, NULL);
+
+    struct libevdev_uinput *uinput_dev = NULL;
+
+    int err = libevdev_uinput_create_from_device(dev, LIBEVDEV_UINPUT_OPEN_MANAGED, &uinput_dev);
+
+    libevdev_free(dev);
+
+    if (err < 0) {
+        std::cerr << "Error creating uinput device: " << strerror(-err) << std::endl;
+        exit(-err);
+    }
+
+    return uinput_dev;
 }
 
 
 int main(){
-    struct libevdev *dev = NULL;
-    bool isMouse = 0;
-    DIR *dir = opendir("/dev/input");
-    struct dirent *entry;
-    while (!isMouse) {
-        fd = open("/dev/input/event*", O_RDONLY|O_NONBLOCK); // dev/input/event7 is mouse 
-        rc = libevdev_new_from_fd(fd, &dev);
-        if (rc < 0) {
-            fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
-            exit(1);
-        }
-        printf("Input device name: \"%s\"\n", libevdev_get_name(dev));
-        printf("Input device ID: bus %#x vendor %#x product %#x\n",
-                libevdev_get_id_bustype(dev),
-                libevdev_get_id_vendor(dev),
-                libevdev_get_id_product(dev));
-        if (!libevdev_has_event_type(dev, EV_REL) ||
-                !libevdev_has_event_code(dev, EV_KEY, BTN_LEFT)) {
-            printf("This device does not look like a mouse\n");
-            exit(1);
-        }
+    int milliseconds_pause = 50;
+    std::cout << "how many ms do you want the clicks to be inbetween eachother\n(it will play in 5s)" << std::endl;
+    std::cin >> milliseconds_pause;
 
-        do {
-            struct input_event ev;
-            rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
-            if (rc == 0)
-                printf("Event: %s %s %d\n",
-                        libevdev_event_type_get_name(ev.type),
-                        libevdev_event_code_get_name(ev.type, ev.code),
-                        ev.value);
-        } while (rc == 1 || rc == 0 || rc == -EAGAIN);
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    struct libevdev_uinput *mouse = create_virtual_mouse();
+
+    auto now = std::chrono::steady_clock::now;
+    using namespace std::chrono_literals;
+    auto work_duration = 5s; // TODO: add a specification on how long it will repeat
+    auto start = now();
+    while ( (now() - start) < work_duration) {
+        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        libevdev_uinput_write_event(mouse, EV_KEY, BTN_LEFT, 1);
+        libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds_pause));
+
+        libevdev_uinput_write_event(mouse, EV_KEY, BTN_LEFT, 0);
+        libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
+    };
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    libevdev_uinput_destroy(mouse);
     return 0;
 }
