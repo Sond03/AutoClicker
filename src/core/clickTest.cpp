@@ -1,9 +1,20 @@
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <libevdev-1.0/libevdev/libevdev.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <linux/input-event-codes.h>
 using namespace std;
+
+int virtualMouse(){
+    struct libevdev *dev = libevdev_new();
+    libevdev_set_name(dev, "virtualMouse");
+    libevdev_enable_event_type(dev, EV_KEY);
+    libevdev_enable_event_code(dev, EV_KEY, BTN_LEFT, NULL);
+    return dev;
+}
+
 
 int main(){
     struct libevdev *dev = NULL;
