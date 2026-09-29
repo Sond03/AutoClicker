@@ -22,7 +22,7 @@ struct libevdev_uinput *create_virtual_mouse(void){
     libevdev_set_name(dev, "virtualMouse");
     libevdev_enable_event_type(dev, EV_KEY);
     libevdev_enable_event_code(dev, EV_KEY, BTN_LEFT, NULL);
-    libevdev_enable_event_code(dev, EV_KEY, BTN_LEFT, NULL);
+    libevdev_enable_event_code(dev, EV_KEY, BTN_RIGHT, NULL);
 
     struct libevdev_uinput *uinput_dev = NULL;
 
@@ -49,17 +49,17 @@ int main(){
 
     auto now = std::chrono::steady_clock::now;
     using namespace std::chrono_literals;
-    auto work_duration = 5s; // TODO: add a specification on how long it will repeat
+    auto work_duration = 1s; // TODO: add a specification on how long it will repeat
     auto start = now();
     while ( (now() - start) < work_duration) {
         // std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        libevdev_uinput_write_event(mouse, EV_KEY, BTN_LEFT, 1);
+        libevdev_uinput_write_event(mouse, EV_KEY, BTN_RIGHT, 1);
         libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds_pause));
 
-        libevdev_uinput_write_event(mouse, EV_KEY, BTN_LEFT, 0);
+        libevdev_uinput_write_event(mouse, EV_KEY, BTN_RIGHT, 0);
         libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
     };
 
