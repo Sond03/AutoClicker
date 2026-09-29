@@ -38,8 +38,14 @@ struct libevdev_uinput *create_virtual_mouse(void){
     return uinput_dev;
 }
 
+int autoclick_cli(double cps, int seconds_to_play, int how_long_to_play){
+    const double second = 1000;
+    cps = second/cps;
+    std::cout << "MS:" << cps << std::endl;
+    return 0;
+}
 
-int main(){
+int autoclicker_base(){
     int milliseconds_pause = 50;
     std::cout << "how many ms do you want the clicks to be inbetween eachother\n(it will play in 5s)" << std::endl;
     std::cin >> milliseconds_pause;
@@ -67,3 +73,12 @@ int main(){
     libevdev_uinput_destroy(mouse);
     return 0;
 }
+
+
+int main(){
+    autoclick_cli(22.2, 1, 1);
+
+    return 0;
+}
+
+
