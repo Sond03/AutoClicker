@@ -10,7 +10,12 @@
 #include <dirent.h>
 #include <linux/input-event-codes.h>
 #include <ostream>
+#include <print>
+#include <string>
 #include <thread>
+
+const std::string RED = "\033[31m";
+const std::string RESET = "\033[0m";
 
 struct libevdev_uinput *create_virtual_mouse(void){
     struct libevdev *dev = libevdev_new();
@@ -38,47 +43,49 @@ struct libevdev_uinput *create_virtual_mouse(void){
     return uinput_dev;
 }
 
-int autoclick_cli(double cps, int seconds_to_play, int how_long_to_play){
-    const double second = 1000;
-    cps = second/cps;
-    std::cout << "MS:" << cps << std::endl;
-    return 0;
-}
-
-int autoclicker_base(){
-    int milliseconds_pause = 50;
-    std::cout << "how many ms do you want the clicks to be inbetween eachother\n(it will play in 5s)" << std::endl;
-    std::cin >> milliseconds_pause;
-
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+int autoclick_cli(double cps, int seconds_to_start, int run_seconds, std::string click){
     struct libevdev_uinput *mouse = create_virtual_mouse();
 
-    auto now = std::chrono::steady_clock::now;
     using namespace std::chrono_literals;
-    auto work_duration = 1s; // TODO: add a specification on how long it will repeat
-    auto start = now();
-    while ( (now() - start) < work_duration) {
-        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    auto cps_ms = 1000ms/cps;
+    std::this_thread::sleep_for(std::chrono::seconds(seconds_to_start));
 
-        libevdev_uinput_write_event(mouse, EV_KEY, BTN_RIGHT, 1);
+    unsigned int button_code = BTN_LEFT;
+    if (click == "right" || click == "RIGHT" || click == "r") {
+        button_code = BTN_RIGHT;
+    } else if (click == "left" || click == "LEFT" || click == "l") {
+        button_code = BTN_LEFT;
+    } else {
+        std::cerr << "Unknown click mode '" << click << "', defaulting to left click." << std::endl;
+    }
+
+    auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(run_seconds);
+    while ( std::chrono::steady_clock::now() < end_time) {
+        libevdev_uinput_write_event(mouse, EV_KEY, button_code, 1);
         libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds_pause));
+        std::this_thread::sleep_for(cps_ms);
 
-        libevdev_uinput_write_event(mouse, EV_KEY, BTN_RIGHT, 0);
+        libevdev_uinput_write_event(mouse, EV_KEY, button_code, 0);
         libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
-    };
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    }
     libevdev_uinput_destroy(mouse);
     return 0;
 }
 
-
-int main(){
-    autoclick_cli(22.2, 1, 1);
-
-    return 0;
+int main(int argc, char *argv[]){
+    if (argc < 5) {
+        std::println(std::cerr, "Usage: {} <clicks per second> <start delay(s)> <run time(s)> <left/right>", argv[0]);
+        return EXIT_FAILURE;
+    }
+    double cps = std::stod(argv[1]);
+    if (cps == 0) {
+        std::println(std::cerr, "{}Error:{} Invalid argument for <clicks per second>. Value must be a positive value above 0.", RED, RESET);
+        return EXIT_FAILURE;
+    }
+    autoclick_cli(cps, std::stoi(argv[2]), std::stoi(argv[3]), argv[4]);
+    return EXIT_SUCCESS;
 }
 
 
