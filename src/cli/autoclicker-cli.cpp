@@ -43,23 +43,23 @@ struct libevdev_uinput *create_virtual_mouse(void){
     return uinput_dev;
 }
 
-int autoclick_cli(double cps, int seconds_to_start, int run_seconds, std::string click){
+int autoclick_cli(double clicks_per_second, int start_delay_seconds, int duration_seconds, std::string click_type){
     struct libevdev_uinput *mouse = create_virtual_mouse();
 
     using namespace std::chrono_literals;
-    auto cps_ms = 1000ms/cps;
-    std::this_thread::sleep_for(std::chrono::seconds(seconds_to_start));
+    auto cps_ms = 1000ms/clicks_per_second;
+    std::this_thread::sleep_for(std::chrono::seconds(start_delay_seconds));
 
     unsigned int button_code = BTN_LEFT;
-    if (click == "right" || click == "RIGHT" || click == "r") {
+    if (click_type == "right" || click_type == "RIGHT" || click_type == "r") {
         button_code = BTN_RIGHT;
-    } else if (click == "left" || click == "LEFT" || click == "l") {
+    } else if (click_type == "left" || click_type == "LEFT" || click_type == "l") {
         button_code = BTN_LEFT;
     } else {
-        std::cerr << "Unknown click mode '" << click << "', defaulting to left click." << std::endl;
+        std::cerr << "Unknown click_type mode '" << click_type << "', defaulting to left click_type." << std::endl;
     }
 
-    auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(run_seconds);
+    auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(duration_seconds);
     while ( std::chrono::steady_clock::now() < end_time) {
         libevdev_uinput_write_event(mouse, EV_KEY, button_code, 1);
         libevdev_uinput_write_event(mouse, EV_SYN, SYN_REPORT, 0);
@@ -79,12 +79,12 @@ int main(int argc, char *argv[]){
         std::println(std::cerr, "Usage: {} <clicks per second> <start delay(s)> <run time(s)> <left/right>", argv[0]);
         return EXIT_FAILURE;
     }
-    double cps = std::stod(argv[1]);
-    if (cps == 0) {
+    double clicks_per_second = std::stod(argv[1]);
+    if (clicks_per_second == 0) {
         std::println(std::cerr, "{}Error:{} Invalid argument for <clicks per second>. Value must be a positive value above 0.", RED, RESET);
         return EXIT_FAILURE;
     }
-    autoclick_cli(cps, std::stoi(argv[2]), std::stoi(argv[3]), argv[4]);
+    autoclick_cli(clicks_per_second, std::stoi(argv[2]), std::stoi(argv[3]), argv[4]);
     return EXIT_SUCCESS;
 }
 
